@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>2025 Product Roadmap – Wrapped & Spaced</title>
+<title>2025 Product Roadmap – Param-Driven</title>
 <style>
 /* ---------- Base layout ---------- */
 body{margin:0;padding:32px;font-family:Arial,Helvetica,sans-serif;background:#f8f9fa}
@@ -41,7 +41,7 @@ label   {margin-right:12px;white-space:nowrap}
 
 <h1>2025 Product Roadmap</h1>
 
-<!-- ================= FILTER BAR ================= -->
+<!-- ================= FILTER BAR (8 check-boxes) ================= -->
 <div class="filters">
   <fieldset id="squadFilter">
     <legend>Squads</legend>
@@ -70,129 +70,149 @@ label   {margin-right:12px;white-space:nowrap}
   <div>Jul</div><div>Aug</div><div>Sep</div><div>Oct</div><div>Nov</div><div>Dec</div>
 </div>
 
-<!-- ================= SQUAD ROWS (JS will fill) ================= -->
+<!-- ================= SQUAD ROWS (JS fills) ================= -->
 <div id="rows"></div>
 
 <script>
-/* -------------------------------------------------
-   1. CONFIGURATION
-------------------------------------------------- */
-const BAR_H = 36;   // bar height (px) – must match CSS
-const GAP   = 16;   // vertical gap between wrapped bars (px)
+/* ---------- helper: pull Base-64 JSON from ?data= ---------- */
+function getDataFromURL(){
+  const p = new URLSearchParams(location.search);
+  if(!p.has('data')) return null;
+  try { return JSON.parse(atob(p.get('data'))); }
+  catch(e){ console.warn('Bad data param:', e); return null; }
+}
 
+/* ---------- constants ---------- */
+const BAR_H = 36;          // px, must match CSS .item height
+const GAP   = 16;          // vertical space between wrapped bars
 const timelineStart = new Date('2025-01-01');
-const timelineEnd   = new Date('2026-01-01');               // exclusive
+const timelineEnd   = new Date('2026-01-01');      // exclusive
 const MS_IN_DAY     = 86_400_000;
 const timelineDays  = (timelineEnd - timelineStart) / MS_IN_DAY;
 
-/* Initiative data (same as before) */
-const initiatives=[{squad:1,label:'Login Revamp',start:'2025-01-05',end:'2025-02-19'},
-{squad:1,label:'SSO Integration',start:'2025-02-15',end:'2025-04-30'},
-{squad:1,label:'Mobile Auth',start:'2025-05-01',end:'2025-06-15'},
-{squad:2,label:'Billing System',start:'2025-01-20',end:'2025-03-31'},
-{squad:2,label:'Invoicing Automation',start:'2025-03-15',end:'2025-07-15'},
-{squad:3,label:'New Dashboard UI',start:'2025-02-01',end:'2025-04-15'},
-{squad:3,label:'Widget Customization',start:'2025-03-20',end:'2025-07-20'},
-{squad:3,label:'Theme Selector',start:'2025-07-21',end:'2025-10-15'},
-{squad:4,label:'Search Optimization',start:'2025-03-10',end:'2025-05-25'},
-{squad:4,label:'AI Suggestions',start:'2025-05-05',end:'2025-08-31'},
-{squad:5,label:'Performance Metrics',start:'2025-05-01',end:'2025-06-30'},
-{squad:5,label:'Real-time Alerts',start:'2025-06-15',end:'2025-09-30'},
-{squad:6,label:'API Rate Limiting',start:'2025-01-15',end:'2025-04-15'},
-{squad:6,label:'GraphQL Expansion',start:'2025-04-01',end:'2025-06-30'},
-{squad:6,label:'Webhooks System',start:'2025-06-20',end:'2025-10-15'},
-{squad:7,label:'Notifications Center',start:'2025-02-10',end:'2025-07-31'},
-{squad:7,label:'Multi-language Support',start:'2025-08-01',end:'2025-11-30'},
-{squad:8,label:'Data Export Tool',start:'2025-05-15',end:'2025-08-15'},
-{squad:8,label:'Audit Logging',start:'2025-07-15',end:'2025-10-31'},
-{squad:8,label:'Compliance Reports',start:'2025-11-01',end:'2025-12-31'}];
+/* ---------- default built-in data ---------- */
+const defaultSquadNames = [
+  'Squad 1','Squad 2','Squad 3','Squad 4',
+  'Squad 5','Squad 6','Squad 7','Squad 8'
+];
+const defaultInitiatives = [
+  {squad:1,label:'Login Revamp',start:'2025-01-05',end:'2025-02-19'},
+  {squad:1,label:'SSO Integration',start:'2025-02-15',end:'2025-04-30'},
+  {squad:1,label:'Mobile Auth',start:'2025-05-01',end:'2025-06-15'},
+  {squad:2,label:'Billing System',start:'2025-01-20',end:'2025-03-31'},
+  {squad:2,label:'Invoicing Automation',start:'2025-03-15',end:'2025-07-15'},
+  {squad:3,label:'New Dashboard UI',start:'2025-02-01',end:'2025-04-15'},
+  {squad:3,label:'Widget Customization',start:'2025-03-20',end:'2025-07-20'},
+  {squad:3,label:'Theme Selector',start:'2025-07-21',end:'2025-10-15'},
+  {squad:4,label:'Search Optimization',start:'2025-03-10',end:'2025-05-25'},
+  {squad:4,label:'AI Suggestions',start:'2025-05-05',end:'2025-08-31'},
+  {squad:5,label:'Performance Metrics',start:'2025-05-01',end:'2025-06-30'},
+  {squad:5,label:'Real-time Alerts',start:'2025-06-15',end:'2025-09-30'},
+  {squad:6,label:'API Rate Limiting',start:'2025-01-15',end:'2025-04-15'},
+  {squad:6,label:'GraphQL Expansion',start:'2025-04-01',end:'2025-06-30'},
+  {squad:6,label:'Webhooks System',start:'2025-06-20',end:'2025-10-15'},
+  {squad:7,label:'Notifications Center',start:'2025-02-10',end:'2025-07-31'},
+  {squad:7,label:'Multi-language Support',start:'2025-08-01',end:'2025-11-30'},
+  {squad:8,label:'Data Export Tool',start:'2025-05-15',end:'2025-08-15'},
+  {squad:8,label:'Audit Logging',start:'2025-07-15',end:'2025-10-31'},
+  {squad:8,label:'Compliance Reports',start:'2025-11-01',end:'2025-12-31'}
+];
 
-/* -------------------------------------------------
-   2. BUILD STATIC ROWS & BARS
-------------------------------------------------- */
-const rowsContainer=document.getElementById('rows');
-for(let s=1;s<=8;s++){
-  const row=document.createElement('div');
-  row.className='squad-row';row.dataset.squad=s;
+/* ---------- load payload ---------- */
+const urlPayload   = getDataFromURL();          // null or { squads, initiatives }
+const squadNames   = urlPayload?.squads      ?? defaultSquadNames;
+const initiatives  = urlPayload?.initiatives ?? defaultInitiatives;
+
+/* ---------- build rows ---------- */
+const rowsContainer = document.getElementById('rows');
+for(let s=1; s<=8; s++){
+  const row  = document.createElement('div');
+  row.className='squad-row'; row.dataset.squad=s;
+
   const label=document.createElement('div');
-  label.className='squad-label';label.textContent=`Squad ${s}`;
+  label.className='squad-label';
+  label.textContent = squadNames[s-1] ?? `Squad ${s}`;
+
   const lane=document.createElement('div');
-  lane.className='lane';lane.id=`lane-${s}`;
-  row.append(label,lane);rowsContainer.appendChild(row);
+  lane.className='lane'; lane.id=`lane-${s}`;
+
+  row.append(label,lane);
+  rowsContainer.appendChild(row);
 }
 
-/* helper: quarters touched by a date range */
+/* helper: which quarters are touched */
 function quartersBetween(a,b){
   const qs=new Set(),t=new Date(a.getFullYear(),a.getMonth(),1);
   while(t<=b){qs.add('Q'+(Math.floor(t.getMonth()/3)+1));t.setMonth(t.getMonth()+1);}
-  return[...qs];
+  return [...qs];
 }
 
-/* create bar elements */
+/* render bars */
 initiatives.forEach(it=>{
-  const s=new Date(it.start),e=new Date(it.end);
-  const startOff=(s-timelineStart)/MS_IN_DAY;
+  const s=new Date(it.start), e=new Date(it.end);
+  const off=(s-timelineStart)/MS_IN_DAY;
   const dur=(e-s)/MS_IN_DAY+1;
+
   const bar=document.createElement('div');
   bar.className=`item squad-${it.squad}`;
-  bar.style.left=`${100*startOff/timelineDays}%`;
-  bar.style.width=`${100*dur/timelineDays}%`;
+  bar.style.left = `${100*off/timelineDays}%`;
+  bar.style.width= `${100*dur/timelineDays}%`;
   bar.textContent=it.label;
+
   bar.dataset.squad=it.squad;
   bar.dataset.quarters=quartersBetween(s,e).join(',');
-  bar.dataset.startOff=startOff;
-  bar.dataset.endOff=startOff+dur;
+  bar.dataset.startOff=off;
+  bar.dataset.endOff=off+dur;
   document.getElementById(`lane-${it.squad}`).appendChild(bar);
 });
 
-/* -------------------------------------------------
-   3. FILTER + WRAP LAYOUT
-------------------------------------------------- */
+/* ---------- filter + wrap ---------- */
 const squadBoxes=[...document.querySelectorAll('#squadFilter input')];
 const quarterBoxes=[...document.querySelectorAll('#quarterFilter input')];
 const bars=[...document.querySelectorAll('.item')];
 const squadRows=[...document.querySelectorAll('.squad-row')];
 
-squadBoxes.forEach(cb=>cb.addEventListener('change',apply));
+squadBoxes .forEach(cb=>cb.addEventListener('change',apply));
 quarterBoxes.forEach(cb=>cb.addEventListener('change',apply));
 
 function apply(){
-  const activeSquads=squadBoxes.filter(cb=>cb.checked).map(cb=>cb.value);
-  const activeQs=quarterBoxes.filter(cb=>cb.checked).map(cb=>cb.value);
+  const activeS=squadBoxes.filter(cb=>cb.checked).map(cb=>cb.value);
+  const activeQ=quarterBoxes.filter(cb=>cb.checked).map(cb=>cb.value);
 
   /* visibility */
   bars.forEach(b=>{
-    const okS=activeSquads.includes(b.dataset.squad);
-    const okQ=b.dataset.quarters.split(',').some(q=>activeQs.includes(q));
+    const okS=activeS.includes(b.dataset.squad);
+    const okQ=b.dataset.quarters.split(',').some(q=>activeQ.includes(q));
     b.classList.toggle('hidden',!(okS&&okQ));
   });
 
-  /* wrap within each squad */
+  /* wrap per squad */
   for(let s=1;s<=8;s++){
     const lane=document.getElementById(`lane-${s}`);
     const active=[...lane.querySelectorAll('.item:not(.hidden)')]
                  .sort((a,b)=>a.dataset.startOff-b.dataset.startOff);
+
     const lanesEnd=[];
     active.forEach(bar=>{
-      const st=+bar.dataset.startOff,en=+bar.dataset.endOff;
+      const st=+bar.dataset.startOff, en=+bar.dataset.endOff;
       let idx=lanesEnd.findIndex(e=>e<st);
       if(idx===-1){idx=lanesEnd.length;lanesEnd.push(en);}
       else        {lanesEnd[idx]=en;}
       bar.style.top=`${idx*(BAR_H+GAP)}px`;
     });
     lane.style.height=
-      `${lanesEnd.length ? lanesEnd.length*BAR_H+(lanesEnd.length-1)*GAP : BAR_H}px`;
+      `${lanesEnd.length? lanesEnd.length*BAR_H+(lanesEnd.length-1)*GAP:BAR_H}px`;
   }
 
-  /* whole-row visibility */
+  /* whole row visibility */
   squadRows.forEach(r=>{
-    const id=r.dataset.squad;
+    const sid=r.dataset.squad;
     const any=[...r.querySelectorAll('.item')].some(b=>!b.classList.contains('hidden'));
     r.classList.toggle('hidden',!any);
   });
 }
 
-apply(); /* initial render */
+apply();   /* initial draw */
 </script>
 </body>
 </html>
