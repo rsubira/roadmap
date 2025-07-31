@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2025 Product Roadmap – Wrapped & Spaced</title>
+<style>
+/* ---------- Base layout ---------- */
+body{margin:0;padding:32px;font-family:Arial,Helvetica,sans-serif;background:#f8f9fa}
+h1  {margin-top:0;text-align:center}
+
+/* ---------- Filter bar ---------- */
+.filters{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;margin-bottom:24px}
+fieldset{border:1px solid #ced4da;border-radius:8px;padding:12px 16px}
+legend  {font-weight:700;padding:0 4px}
+label   {margin-right:12px;white-space:nowrap}
+
+/* ---------- Month header ---------- */
+.months{display:grid;grid-template-columns:150px repeat(12,1fr);margin-bottom:16px}
+.months div:nth-child(1){}
+.months div{background:#e9ecef;text-align:center;line-height:40px;font-weight:600;border-radius:4px}
+
+/* ---------- Squad rows ---------- */
+.squad-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;
+           border-bottom:1px solid #e3e3e3;padding-bottom:12px}
+.squad-row.hidden{display:none !important}
+.squad-label{flex:0 0 150px;font-weight:700}
+.lane{flex:1;position:relative;min-height:36px}
+
+/* ---------- Initiative bars ---------- */
+.item{position:absolute;height:36px;border-radius:20px;padding:6px 12px;color:#fff;
+      font-size:0.9rem;white-space:nowrap;display:flex;align-items:center}
+.squad-1{background:#FF6B6B}.squad-2{background:#6BCB77}.squad-3{background:#4D96FF}
+.squad-4{background:#FFB84C}.squad-5{background:#845EC2}.squad-6{background:#00C9A7}
+.squad-7{background:#FF9671}.squad-8{background:#2C73D2}
+
+.hidden{display:none !important}
+</style>
+</head>
+<body>
+
+<h1>2025 Product Roadmap</h1>
+
+<!-- ================= FILTER BAR ================= -->
+<div class="filters">
+  <fieldset id="squadFilter">
+    <legend>Squads</legend>
+    <label><input type="checkbox" value="1" checked> Squad&nbsp;1</label>
+    <label><input type="checkbox" value="2" checked> Squad&nbsp;2</label>
+    <label><input type="checkbox" value="3" checked> Squad&nbsp;3</label>
+    <label><input type="checkbox" value="4" checked> Squad&nbsp;4</label>
+    <label><input type="checkbox" value="5" checked> Squad&nbsp;5</label>
+    <label><input type="checkbox" value="6" checked> Squad&nbsp;6</label>
+    <label><input type="checkbox" value="7" checked> Squad&nbsp;7</label>
+    <label><input type="checkbox" value="8" checked> Squad&nbsp;8</label>
+  </fieldset>
+
+  <fieldset id="quarterFilter">
+    <legend>Quarters</legend>
+    <label><input type="checkbox" value="Q1" checked> Q1&nbsp;(Jan-Mar)</label>
+    <label><input type="checkbox" value="Q2" checked> Q2&nbsp;(Apr-Jun)</label>
+    <label><input type="checkbox" value="Q3" checked> Q3&nbsp;(Jul-Sep)</label>
+    <label><input type="checkbox" value="Q4" checked> Q4&nbsp;(Oct-Dec)</label>
+  </fieldset>
+</div>
+
+<!-- ================= MONTH HEADER ================= -->
+<div class="months">
+  <div></div><div>Jan</div><div>Feb</div><div>Mar</div><div>Apr</div><div>May</div><div>Jun</div>
+  <div>Jul</div><div>Aug</div><div>Sep</div><div>Oct</div><div>Nov</div><div>Dec</div>
+</div>
+
+<!-- ================= SQUAD ROWS (JS will fill) ================= -->
+<div id="rows"></div>
+
+<script>
+/* -------------------------------------------------
+   1. CONFIGURATION
+------------------------------------------------- */
+const BAR_H = 36;   // bar height (px) – must match CSS
+const GAP   = 16;   // vertical gap between wrapped bars (px)
+
+const timelineStart = new Date('2025-01-01');
+const timelineEnd   = new Date('2026-01-01');               // exclusive
+const MS_IN_DAY     = 86_400_000;
+const timelineDays  = (timelineEnd - timelineStart) / MS_IN_DAY;
+
+/* Initiative data (same as before) */
+const initiatives=[{squad:1,label:'Login Revamp',start:'2025-01-05',end:'2025-02-19'},
+{squad:1,label:'SSO Integration',start:'2025-02-15',end:'2025-04-30'},
+{squad:1,label:'Mobile Auth',start:'2025-05-01',end:'2025-06-15'},
+{squad:2,label:'Billing System',start:'2025-01-20',end:'2025-03-31'},
+{squad:2,label:'Invoicing Automation',start:'2025-03-15',end:'2025-07-15'},
+{squad:3,label:'New Dashboard UI',start:'2025-02-01',end:'2025-04-15'},
+{squad:3,label:'Widget Customization',start:'2025-03-20',end:'2025-07-20'},
+{squad:3,label:'Theme Selector',start:'2025-07-21',end:'2025-10-15'},
+{squad:4,label:'Search Optimization',start:'2025-03-10',end:'2025-05-25'},
+{squad:4,label:'AI Suggestions',start:'2025-05-05',end:'2025-08-31'},
+{squad:5,label:'Performance Metrics',start:'2025-05-01',end:'2025-06-30'},
+{squad:5,label:'Real-time Alerts',start:'2025-06-15',end:'2025-09-30'},
+{squad:6,label:'API Rate Limiting',start:'2025-01-15',end:'2025-04-15'},
+{squad:6,label:'GraphQL Expansion',start:'2025-04-01',end:'2025-06-30'},
+{squad:6,label:'Webhooks System',start:'2025-06-20',end:'2025-10-15'},
+{squad:7,label:'Notifications Center',start:'2025-02-10',end:'2025-07-31'},
+{squad:7,label:'Multi-language Support',start:'2025-08-01',end:'2025-11-30'},
+{squad:8,label:'Data Export Tool',start:'2025-05-15',end:'2025-08-15'},
+{squad:8,label:'Audit Logging',start:'2025-07-15',end:'2025-10-31'},
+{squad:8,label:'Compliance Reports',start:'2025-11-01',end:'2025-12-31'}];
+
+/* -------------------------------------------------
+   2. BUILD STATIC ROWS & BARS
+------------------------------------------------- */
+const rowsContainer=document.getElementById('rows');
+for(let s=1;s<=8;s++){
+  const row=document.createElement('div');
+  row.className='squad-row';row.dataset.squad=s;
+  const label=document.createElement('div');
+  label.className='squad-label';label.textContent=`Squad ${s}`;
+  const lane=document.createElement('div');
+  lane.className='lane';lane.id=`lane-${s}`;
+  row.append(label,lane);rowsContainer.appendChild(row);
+}
+
+/* helper: quarters touched by a date range */
+function quartersBetween(a,b){
+  const qs=new Set(),t=new Date(a.getFullYear(),a.getMonth(),1);
+  while(t<=b){qs.add('Q'+(Math.floor(t.getMonth()/3)+1));t.setMonth(t.getMonth()+1);}
+  return[...qs];
+}
+
+/* create bar elements */
+initiatives.forEach(it=>{
+  const s=new Date(it.start),e=new Date(it.end);
+  const startOff=(s-timelineStart)/MS_IN_DAY;
+  const dur=(e-s)/MS_IN_DAY+1;
+  const bar=document.createElement('div');
+  bar.className=`item squad-${it.squad}`;
+  bar.style.left=`${100*startOff/timelineDays}%`;
+  bar.style.width=`${100*dur/timelineDays}%`;
+  bar.textContent=it.label;
+  bar.dataset.squad=it.squad;
+  bar.dataset.quarters=quartersBetween(s,e).join(',');
+  bar.dataset.startOff=startOff;
+  bar.dataset.endOff=startOff+dur;
+  document.getElementById(`lane-${it.squad}`).appendChild(bar);
+});
+
+/* -------------------------------------------------
+   3. FILTER + WRAP LAYOUT
+------------------------------------------------- */
+const squadBoxes=[...document.querySelectorAll('#squadFilter input')];
+const quarterBoxes=[...document.querySelectorAll('#quarterFilter input')];
+const bars=[...document.querySelectorAll('.item')];
+const squadRows=[...document.querySelectorAll('.squad-row')];
+
+squadBoxes.forEach(cb=>cb.addEventListener('change',apply));
+quarterBoxes.forEach(cb=>cb.addEventListener('change',apply));
+
+function apply(){
+  const activeSquads=squadBoxes.filter(cb=>cb.checked).map(cb=>cb.value);
+  const activeQs=quarterBoxes.filter(cb=>cb.checked).map(cb=>cb.value);
+
+  /* visibility */
+  bars.forEach(b=>{
+    const okS=activeSquads.includes(b.dataset.squad);
+    const okQ=b.dataset.quarters.split(',').some(q=>activeQs.includes(q));
+    b.classList.toggle('hidden',!(okS&&okQ));
+  });
+
+  /* wrap within each squad */
+  for(let s=1;s<=8;s++){
+    const lane=document.getElementById(`lane-${s}`);
+    const active=[...lane.querySelectorAll('.item:not(.hidden)')]
+                 .sort((a,b)=>a.dataset.startOff-b.dataset.startOff);
+    const lanesEnd=[];
+    active.forEach(bar=>{
+      const st=+bar.dataset.startOff,en=+bar.dataset.endOff;
+      let idx=lanesEnd.findIndex(e=>e<st);
+      if(idx===-1){idx=lanesEnd.length;lanesEnd.push(en);}
+      else        {lanesEnd[idx]=en;}
+      bar.style.top=`${idx*(BAR_H+GAP)}px`;
+    });
+    lane.style.height=
+      `${lanesEnd.length ? lanesEnd.length*BAR_H+(lanesEnd.length-1)*GAP : BAR_H}px`;
+  }
+
+  /* whole-row visibility */
+  squadRows.forEach(r=>{
+    const id=r.dataset.squad;
+    const any=[...r.querySelectorAll('.item')].some(b=>!b.classList.contains('hidden'));
+    r.classList.toggle('hidden',!any);
+  });
+}
+
+apply(); /* initial render */
+</script>
+</body>
+</html>
