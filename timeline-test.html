@@ -5,22 +5,23 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>2025 Product Roadmap – Param-Driven</title>
 
+<!-- ── Webhook trigger + optional polling ─────────────────────────── -->
 <script>
-/* =========================================================================
-   1)   Trigger Pipefy webhook, poll up to 60 s, then call   render(payload)
-   ========================================================================= */
 (async () => {
-  const params = new URLSearchParams(location.search);
-  const WEBHOOK = 'https://ipaas.pipefy.com/api/v1/webhooks/FX15MTvagDV7s4VM3gOVC';
-  const POLL_MS = 3000, MAX_TRIES = 20;
+  const params   = new URLSearchParams(location.search);
+  const WEBHOOK  = 'https://ipaas.pipefy.com/api/v1/webhooks/FX15MTvagDV7s4VM3gOVC';
+  const POLL_MS  = 3000;
+  const MAX_TRIES= 20;               // ~60 s total
 
-  // small banner
+  /* loading banner */
   const banner = document.createElement('div');
   banner.textContent = 'Loading roadmap …';
-  banner.style.cssText = 'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#f8f9fa;font:1.5rem Arial';
+  banner.style.cssText =
+    'position:fixed;inset:0;display:flex;align-items:center;justify-content:center;' +
+    'background:#f8f9fa;font:1.5rem Arial';
   document.documentElement.appendChild(banner);
 
-  // if ?data= already present, decode & render immediately
+  /* If ?data= is already present, render right away */
   if (params.has('data')) {
     try { render(JSON.parse(atob(params.get('data')))); }
     catch { render(null); }
@@ -28,17 +29,32 @@
     return;
   }
 
-  // ① POST → kick off integration
-  try { await fetch(WEBHOOK, { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' }); }
-  catch(e){ console.warn('POST failed',e); }
+  /* 1️⃣  POST – kick off integration and look at its response */
+  let initialJSON = null;
+  try {
+    const resp = await fetch(
+      WEBHOOK,
+      { method:'POST', headers:{'Content-Type':'application/json'}, body:'{}' }
+    );
+    if (resp.ok) initialJSON = await resp.json();
+  } catch (e) { console.warn('POST failed', e); }
 
-  // ② poll
+  /* If POST already included { data: "..." } → use it, skip polling */
+  if (initialJSON && initialJSON.data) {
+    params.set('data', initialJSON.data);
+    history.replaceState(null,'',location.pathname+'?'+params.toString());
+    render(JSON.parse(atob(initialJSON.data)));
+    banner.remove();
+    return;
+  }
+
+  /* 2️⃣  Poll until the flow provides the payload or times out */
   for (let i=0;i<MAX_TRIES;i++){
     try{
-      const r = await fetch(WEBHOOK);
-      if(r.ok){
+      const r = await fetch(WEBHOOK);          // simple GET
+      if (r.ok) {
         const j = await r.json();
-        if(j && j.data){
+        if (j && j.data) {
           params.set('data', j.data);
           history.replaceState(null,'',location.pathname+'?'+params.toString());
           render(JSON.parse(atob(j.data)));
@@ -46,56 +62,102 @@
           return;
         }
       }
-    }catch(_){}       // ignore & retry
+    } catch(_) { /* ignore & retry */ }
     await new Promise(res=>setTimeout(res,POLL_MS));
   }
 
-  // ③ timeout → demo data
+  /* 3️⃣  Give up → fallback demo data */
   console.warn('Webhook timed out – showing demo roadmap');
-  render(null);
   banner.remove();
+  render(null);
 })();
+</script>
+<!-- ──────────────────────────────────────────────────────────────── -->
 
-/* =========================================================================
-   2)   TIMELINE RENDERING LOGIC, now inside a function
-   ========================================================================= */
+<style>
+/* (CSS unchanged) */
+body{margin:0;padding:32px;font-family:Arial,Helvetica,sans-serif;background:#f8f9fa}
+h1{text-align:center;margin-top:0}
+.filters{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;margin-bottom:24px}
+fieldset{border:1px solid #ced4da;border-radius:8px;padding:12px 16px}
+legend{font-weight:700;padding:0 4px}
+label{margin-right:12px;white-space:nowrap}
+.months{display:grid;grid-template-columns:150px repeat(12,1fr);margin-bottom:16px}
+.months div:nth-child(1){}
+.months div{background:#e9ecef;text-align:center;line-height:40px;font-weight:600;border-radius:4px}
+.squad-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;border-bottom:1px solid #e3e3e3;padding-bottom:12px}
+.squad-row.hidden{display:none !important}
+.squad-label{flex:0 0 150px;font-weight:700}
+.lane{flex:1;position:relative;min-height:36px}
+.item{position:absolute;height:36px;border-radius:20px;padding:6px 12px;color:#fff;font-size:0.9rem;white-space:nowrap;display:flex;align-items:center}
+.squad-1{background:#FF6B6B}.squad-2{background:#6BCB77}.squad-3{background:#4D96FF}
+.squad-4{background:#FFB84C}.squad-5{background:#845EC2}.squad-6{background:#00C9A7}
+.squad-7{background:#FF9671}.squad-8{background:#2C73D2}
+.hidden{display:none !important}
+</style>
+</head>
+
+<body>
+<h1>2025 Product Roadmap</h1>
+
+<!-- Filters -->
+<div class="filters">
+  <fieldset id="squadFilter"><legend>Squads</legend>
+    <label><input type="checkbox" value="1" checked> Squad&nbsp;1</label>
+    <label><input type="checkbox" value="2" checked> Squad&nbsp;2</label>
+    <label><input type="checkbox" value="3" checked> Squad&nbsp;3</label>
+    <label><input type="checkbox" value="4" checked> Squad&nbsp;4</label>
+    <label><input type="checkbox" value="5" checked> Squad&nbsp;5</label>
+    <label><input type="checkbox" value="6" checked> Squad&nbsp;6</label>
+    <label><input type="checkbox" value="7" checked> Squad&nbsp;7</label>
+    <label><input type="checkbox" value="8" checked> Squad&nbsp;8</label>
+  </fieldset>
+
+  <fieldset id="quarterFilter"><legend>Quarters</legend>
+    <label><input type="checkbox" value="Q1" checked> Q1&nbsp;(Jan–Mar)</label>
+    <label><input type="checkbox" value="Q2" checked> Q2&nbsp;(Apr–Jun)</label>
+    <label><input type="checkbox" value="Q3" checked> Q3&nbsp;(Jul–Sep)</label>
+    <label><input type="checkbox" value="Q4" checked> Q4&nbsp;(Oct–Dec)</label>
+  </fieldset>
+</div>
+
+<!-- Month header -->
+<div class="months">
+  <div></div><div>Jan</div><div>Feb</div><div>Mar</div><div>Apr</div><div>May</div><div>Jun</div>
+  <div>Jul</div><div>Aug</div><div>Sep</div><div>Oct</div><div>Nov</div><div>Dec</div>
+</div>
+
+<!-- Rows container -->
+<div id="rows"></div>
+
+<!-- ========= timeline rendering function (unchanged) ========= -->
+<script>
 function render(payload){
-  /* ---------- constants ---------- */
   const BAR_H=36,GAP=16,t0=new Date('2025-01-01'),t1=new Date('2026-01-01');
   const MS=86_400_000,timelineDays=(t1-t0)/MS;
 
-  /* ---------- fallback demo ---------- */
   const demoSquads=['Squad 1','Squad 2','Squad 3','Squad 4','Squad 5','Squad 6','Squad 7','Squad 8'];
   const demoInitiatives=[{squad:1,label:'Login Revamp',start:'2025-01-05',end:'2025-02-19'}];
 
-  const squads     = payload?.squads      ?? demoSquads;
-  const initiatives= payload?.initiatives ?? demoInitiatives;
+  const squads=payload?.squads??demoSquads;
+  const initiatives=payload?.initiatives??demoInitiatives;
 
-  /* ---------- Build UI skeleton (months header already in HTML) ---------- */
-  const rows = document.getElementById('rows');
-  rows.innerHTML='';                         // clear in case of re-render
+  const rows=document.getElementById('rows');
+  rows.innerHTML='';
   for(let s=1;s<=squads.length;s++){
-    const row = document.createElement('div');
-    row.className='squad-row'; row.dataset.squad=s;
-
-    const label = document.createElement('div');
-    label.className='squad-label'; label.textContent=squads[s-1]??`Squad ${s}`;
-
-    const lane  = document.createElement('div');
-    lane.className='lane'; lane.id=`lane-${s}`;
-
-    row.append(label,lane); rows.appendChild(row);
+    const row=document.createElement('div');row.className='squad-row';row.dataset.squad=s;
+    const label=document.createElement('div');label.className='squad-label';
+    label.textContent=squads[s-1]??`Squad ${s}`;
+    const lane=document.createElement('div');lane.className='lane';lane.id=`lane-${s}`;
+    row.append(label,lane);rows.appendChild(row);
   }
 
-  /* helper */
   const quartersBetween=(a,b)=>{const set=new Set(),d=new Date(a.getFullYear(),a.getMonth(),1);
     while(d<=b){set.add('Q'+(Math.floor(d.getMonth()/3)+1));d.setMonth(d.getMonth()+1);}return[...set];};
 
-  /* render bars */
   initiatives.forEach(i=>{
     const s=new Date(i.start),e=new Date(i.end),off=(s-t0)/MS,dur=(e-s)/MS+1;
-    const bar=document.createElement('div');
-    bar.className=`item squad-${i.squad}`;
+    const bar=document.createElement('div');bar.className=`item squad-${i.squad}`;
     bar.style.left=`${100*off/timelineDays}%`;
     bar.style.width=`${100*dur/timelineDays}%`;
     bar.textContent=i.label;
@@ -105,7 +167,6 @@ function render(payload){
     document.getElementById(`lane-${i.squad}`).appendChild(bar);
   });
 
-  /* -------- filters & wrapping -------- */
   const squadCbs=[...document.querySelectorAll('#squadFilter input')];
   const quarterCbs=[...document.querySelectorAll('#quarterFilter input')];
   const bars=[...document.querySelectorAll('.item')];
@@ -138,7 +199,6 @@ function render(payload){
       });
       lane.style.height=`${ends.length?ends.length*BAR_H+(ends.length-1)*GAP:BAR_H}px`;
     }
-
     rowsAll.forEach(r=>{
       const any=[...r.querySelectorAll('.item')].some(b=>!b.classList.contains('hidden'));
       r.classList.toggle('hidden',!any);
@@ -146,58 +206,5 @@ function render(payload){
   }
 }
 </script>
-
-<style>
-/* === (CSS unchanged – same as previous file) === */
-body{margin:0;padding:32px;font-family:Arial,Helvetica,sans-serif;background:#f8f9fa}
-h1{text-align:center;margin-top:0}
-.filters{display:flex;flex-wrap:wrap;gap:24px;justify-content:center;margin-bottom:24px}
-fieldset{border:1px solid #ced4da;border-radius:8px;padding:12px 16px}
-legend{font-weight:700;padding:0 4px}
-label{margin-right:12px;white-space:nowrap}
-.months{display:grid;grid-template-columns:150px repeat(12,1fr);margin-bottom:16px}
-.months div:nth-child(1){}
-.months div{background:#e9ecef;text-align:center;line-height:40px;font-weight:600;border-radius:4px}
-.squad-row{display:flex;align-items:flex-start;gap:8px;margin-bottom:20px;border-bottom:1px solid #e3e3e3;padding-bottom:12px}
-.squad-row.hidden{display:none !important}
-.squad-label{flex:0 0 150px;font-weight:700}
-.lane{flex:1;position:relative;min-height:36px}
-.item{position:absolute;height:36px;border-radius:20px;padding:6px 12px;color:#fff;font-size:0.9rem;white-space:nowrap;display:flex;align-items:center}
-.squad-1{background:#FF6B6B}.squad-2{background:#6BCB77}.squad-3{background:#4D96FF}.squad-4{background:#FFB84C}
-.squad-5{background:#845EC2}.squad-6{background:#00C9A7}.squad-7{background:#FF9671}.squad-8{background:#2C73D2}
-.hidden{display:none !important}
-</style>
-</head>
-
-<body>
-<h1>2025 Product Roadmap</h1>
-<!-- Filters -->
-<div class="filters">
-  <fieldset id="squadFilter"><legend>Squads</legend>
-    <label><input type="checkbox" value="1" checked> Squad&nbsp;1</label>
-    <label><input type="checkbox" value="2" checked> Squad&nbsp;2</label>
-    <label><input type="checkbox" value="3" checked> Squad&nbsp;3</label>
-    <label><input type="checkbox" value="4" checked> Squad&nbsp;4</label>
-    <label><input type="checkbox" value="5" checked> Squad&nbsp;5</label>
-    <label><input type="checkbox" value="6" checked> Squad&nbsp;6</label>
-    <label><input type="checkbox" value="7" checked> Squad&nbsp;7</label>
-    <label><input type="checkbox" value="8" checked> Squad&nbsp;8</label>
-  </fieldset>
-  <fieldset id="quarterFilter"><legend>Quarters</legend>
-    <label><input type="checkbox" value="Q1" checked> Q1&nbsp;(Jan–Mar)</label>
-    <label><input type="checkbox" value="Q2" checked> Q2&nbsp;(Apr–Jun)</label>
-    <label><input type="checkbox" value="Q3" checked> Q3&nbsp;(Jul–Sep)</label>
-    <label><input type="checkbox" value="Q4" checked> Q4&nbsp;(Oct–Dec)</label>
-  </fieldset>
-</div>
-
-<!-- Month header -->
-<div class="months">
-  <div></div><div>Jan</div><div>Feb</div><div>Mar</div><div>Apr</div><div>May</div><div>Jun</div>
-  <div>Jul</div><div>Aug</div><div>Sep</div><div>Oct</div><div>Nov</div><div>Dec</div>
-</div>
-
-<!-- Rows container -->
-<div id="rows"></div>
 </body>
 </html>
